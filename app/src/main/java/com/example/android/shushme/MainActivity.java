@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.support.annotation.NonNull;
@@ -30,6 +31,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.Toast;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -66,6 +69,8 @@ public class MainActivity extends AppCompatActivity implements
     private PlaceListAdapter mAdapter;
     private RecyclerView mRecyclerView;
     private GoogleApiClient mClient;
+    private boolean mIsEnabled;
+    private Geofencing mGeofencing;
 
     /**
      * Called when the activity is starting
@@ -83,6 +88,24 @@ public class MainActivity extends AppCompatActivity implements
         mAdapter = new PlaceListAdapter(this, null);
         mRecyclerView.setAdapter(mAdapter);
 
+        Switch onOffSwitch = (Switch) findViewById(R.id.enable_switch);
+        mIsEnabled = getPreferences(MODE_PRIVATE).getBoolean(getString(R.string.setting_enabled), false);
+        onOffSwitch.setChecked(mIsEnabled);
+        onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
+        {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
+            {
+                SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
+                editor.putBoolean(getString(R.string.setting_enabled), isChecked);
+                mIsEnabled = isChecked;
+                editor.commit();
+
+                if (isChecked) mGeofencing.registerAllGeofences();
+                else mGeofencing.unRegisterAllGeofences();
+            }
+        });
+
         mClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
@@ -91,6 +114,8 @@ public class MainActivity extends AppCompatActivity implements
                 .enableAutoManage(this, this)
                 .build();
 
+        mGeofencing = new Geofencing(this, mClient);
+
     }
 
     @Override
@@ -98,6 +123,18 @@ public class MainActivity extends AppCompatActivity implements
     {
         refreshPlacesData();
         Log.i(TAG, "API Client Connection Successful!");
+    }
+
+    @Override
+    public void onConnectionSuspended(int cause)
+    {
+        Log.i(TAG,"API Client Connection Suspended!");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult result)
+    {
+        Log.e(TAG,"API Client Connection Failed!");
     }
 
     private void refreshPlacesData()
@@ -126,20 +163,10 @@ public class MainActivity extends AppCompatActivity implements
             public void onResult(@NonNull PlaceBuffer places)
             {
                 mAdapter.swapPlaces(places);
+                mGeofencing.updateGeoFencesList(places);
+                if (mIsEnabled) mGeofencing.registerAllGeofences();
             }
         });
-    }
-
-    @Override
-    public void onConnectionSuspended(int cause)
-    {
-        Log.i(TAG,"API Client Connection Suspended!");
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult result)
-    {
-        Log.e(TAG,"API Client Connection Failed!");
     }
 
     public void onAddPlaceButtonClicked(View view)
