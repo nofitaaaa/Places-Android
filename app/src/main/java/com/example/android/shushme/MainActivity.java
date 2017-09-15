@@ -151,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements
 
         if (data == null || data.getCount() == 0) return;
 
-        List<String> guids = new ArrayList<>();
+        List<String> guids = new ArrayList<String>();
 
         while (data.moveToNext())
         {
@@ -173,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements
 
     public void onAddPlaceButtonClicked(View view)
     {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
         {
             Toast.makeText(this, getString(R.string.need_location_permission_message), Toast.LENGTH_LONG).show();
             return;
